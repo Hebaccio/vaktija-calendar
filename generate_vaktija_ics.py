@@ -13,13 +13,28 @@ def fetch_prayer_times():
     for year in years:
         for month in range(1, 13):
             url = f"https://api.vaktija.ba/vaktija/v1/{LOCATION_ID}/{year}/{month}"
+            print(f"Fetching: {url}")
             r = requests.get(url)
-            data = r.json()
+
+            try:
+                data = r.json()
+            except:
+                print(f"❌ ERROR: Invalid JSON for {year}-{month}")
+                continue
+
+            # Skip if "vakat" is missing or empty
+            if "vakat" not in data:
+                print(f"⚠️ No vakat data for {year}-{month}, skipping...")
+                continue
+
+            if not data["vakat"]:
+                print(f"⚠️ Empty vakat list for {year}-{month}, skipping...")
+                continue
+
+            prayers = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
 
             for day, vakti in enumerate(data["vakat"], start=1):
                 date = datetime(year, month, day)
-                prayers = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
-
                 for name, time in zip(prayers, vakti):
                     dt = datetime.strptime(f"{date.date()} {time}", "%Y-%m-%d %H:%M")
                     rows.append((name, dt))
@@ -40,8 +55,10 @@ def build_ics(events):
     with open("Vaktija_Sarajevo.ics", "w", encoding="utf-8") as f:
         f.writelines(cal)
 
+    print("✔️ ICS file created: Vaktija_Sarajevo.ics")
+
 
 if __name__ == "__main__":
     events = fetch_prayer_times()
+    print(f"Total events: {len(events)}")
     build_ics(events)
-
