@@ -1,50 +1,43 @@
 import requests
 from datetime import datetime, timedelta
 from ics import Calendar, Event
+import pytz
 
 LOCATION_ID = 77  # Sarajevo
-YEARS_FORWARD = 2  # generate for next 2 years
+sarajevo_tz = pytz.timezone("Europe/Sarajevo")
 
 def fetch_prayer_times():
-    rows = []
-    current_year = datetime.now().year
-    years = list(range(current_year, current_year + YEARS_FORWARD + 1))
+    events = []
+    start_date = datetime.now()
+    end_date = datetime(start_date.year + 2, 12, 31)
 
-    for year in years:
-        for month in range(1, 13):
-            url = f"https://api.vaktija.ba/vaktija/v1/{LOCATION_ID}/{year}/{month}"
-            print(f"Fetching: {url}")
-            r = requests.get(url)
+    delta = timedelta(days=1)
+    current = start_date
 
-            try:
-                data = r.json()
-            except:
-                print(f"❌ ERROR: Invalid JSON for {year}-{month}")
-                continue
+    prayers = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
 
-            # Skip if "vakat" is missing or empty
-            if "vakat" not in data:
-                print(f"⚠️ No vakat data for {year}-{month}, skipping...")
-                continue
+    while current <= end_date:
+        url = f"https://api.vaktija.ba/vaktija/v1/{LOCATION_ID}/{current.year}/{current.month}/{current.day}"
+        r = requests.get(url)
+        try:
+            data = r.json()
+        except:
+            current += delta
+            continue
 
-            if not data["vakat"]:
-                print(f"⚠️ Empty vakat list for {year}-{month}, skipping...")
-                continue
+        vakat = data.get("vakat")
+        if vakat:
+            for name, time in zip(prayers, vakat):
+                dt = datetime.strptime(f"{current.date()} {time}", "%Y-%m-%d %H:%M")
+                dt = sarajevo_tz.localize(dt)
+                events.append((name, dt))
 
-            prayers = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
+        current += delta
 
-            for day, vakti in enumerate(data["vakat"], start=1):
-                date = datetime(year, month, day)
-                for name, time in zip(prayers, vakti):
-                    dt = datetime.strptime(f"{date.date()} {time}", "%Y-%m-%d %H:%M")
-                    rows.append((name, dt))
-
-    return rows
-
+    return events
 
 def build_ics(events):
     cal = Calendar()
-
     for name, dt in events:
         e = Event()
         e.name = name
@@ -54,11 +47,8 @@ def build_ics(events):
 
     with open("Vaktija_Sarajevo.ics", "w", encoding="utf-8") as f:
         f.writelines(cal)
-
-    print("✔️ ICS file created: Vaktija_Sarajevo.ics")
-
+    print(f"✔️ ICS generated with {len(events)} events")
 
 if __name__ == "__main__":
     events = fetch_prayer_times()
-    print(f"Total events: {len(events)}")
     build_ics(events)
