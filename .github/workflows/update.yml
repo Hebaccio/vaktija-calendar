@@ -1,0 +1,33 @@
+name: Update Vaktija ICS
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"   # every Monday at 03:00 UTC
+  workflow_dispatch:      # allows manual run
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: pip install ics requests
+
+    - name: Generate ICS
+      run: python generate_vaktija_ics.py
+
+    - name: Commit updated file
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add Vaktija_Sarajevo.ics
+        git commit -m "Auto-update ICS" || echo "No changes"
+        git push
