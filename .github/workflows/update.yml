@@ -25,9 +25,11 @@ jobs:
       run: python generate_vaktija_ics.py
 
     - name: Commit updated file
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
         git add Vaktija_Sarajevo.ics
         git commit -m "Auto-update ICS" || echo "No changes"
-        git push
+        git push origin HEAD:main
