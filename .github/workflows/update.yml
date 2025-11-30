@@ -2,7 +2,7 @@ name: Update Vaktija ICS
 
 on:
   schedule:
-    - cron: "0 3 * * 1"   # every Monday at 03:00 UTC
+    - cron: "0 3 * * *"   # every day at 03:00 UTC
   workflow_dispatch:      # allows manual run
 
 jobs:
