@@ -8,7 +8,7 @@ import os
 LOCATION_ID = 77  # Sarajevo
 sarajevo_tz = pytz.timezone("Europe/Sarajevo")
 
-ICS_FILE = "Vaktija_Sarajevo.ics"
+ICS_FILE = "Vaktija_Sarajevo1.ics"
 
 
 # --------------------------------------------------------
@@ -65,7 +65,7 @@ def get_last_date(calendar):
 
 
 # --------------------------------------------------------
-# FETCH PRAYER DATA FOR NEXT DAY ONLY
+# FETCH PRAYER DATA FOR NEXT DAY ONLY  (Your original logic)
 # --------------------------------------------------------
 def fetch_prayer_times():
     calendar = load_existing_ics()
@@ -110,23 +110,61 @@ def fetch_prayer_times():
         if vakat:
             print(f"[SUCCESS] Received data for {current}")
 
+            # --------------------------------------------------------
+            # NEW LOGIC: BUILD FULL DATETIME LIST
+            # --------------------------------------------------------
+            dt_list = []
+            for t in vakat:
+                dt = datetime.strptime(f"{current} {t}", "%Y-%m-%d %H:%M")
+                dt_list.append(sarajevo_tz.localize(dt))
+
+            # --------------------------------------------------------
+            # NEW LOGIC: DEFINE PRAYER TIME RANGES
+            # --------------------------------------------------------
+            ranges = {
+                "Fajr": (
+                    dt_list[0],
+                    dt_list[1]
+                ),
+                "Dhuhr": (
+                    dt_list[2],
+                    dt_list[3] - timedelta(minutes=1)
+                ),
+                "Asr": (
+                    dt_list[3],
+                    dt_list[4] - timedelta(minutes=1)
+                ),
+                "Maghrib": (
+                    dt_list[4],
+                    dt_list[5] - timedelta(minutes=1)
+                ),
+                "Isha": (
+                    dt_list[5],
+                    sarajevo_tz.localize(datetime.combine(
+                        current,
+                        datetime.strptime("23:59", "%H:%M").time()
+                    ))
+                )
+            }
+
+            # --------------------------------------------------------
+            # ADD EVENTS USING NEW RANGE LOGIC
+            # --------------------------------------------------------
             new_events_added = False
 
-            for name, time_str in zip(prayers, vakat):
-                dt = datetime.strptime(
-                    f"{current} {time_str}", "%Y-%m-%d %H:%M"
-                )
-                dt = sarajevo_tz.localize(dt)
+            for name, (start_dt, end_dt) in ranges.items():
 
-                if (name, dt) not in existing:
-                    event = Event(
-                        name=name,
-                        begin=dt,
-                        end=dt + timedelta(minutes=10)
-                    )
-                    calendar.events.add(event)
-                    existing.add((name, dt))
-                    new_events_added = True
+                if (name, start_dt) in existing:
+                    continue
+
+                event = Event(
+                    name=name,
+                    begin=start_dt,
+                    end=end_dt
+                )
+                calendar.events.add(event)
+                existing.add((name, start_dt))
+                new_events_added = True
 
             if new_events_added:
                 print("[INFO] New events added — saving to file...")
