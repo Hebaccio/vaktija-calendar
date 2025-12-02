@@ -8,7 +8,7 @@ import os
 LOCATION_ID = 77  # Sarajevo
 sarajevo_tz = pytz.timezone("Europe/Sarajevo")
 
-ICS_FILE = "Vaktija_Sarajevo1.ics"
+ICS_FILE = "Vaktija_Sarajevo.ics"
 
 
 # --------------------------------------------------------
